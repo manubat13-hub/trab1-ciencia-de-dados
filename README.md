@@ -1,6 +1,6 @@
 # Livros Adaptados para o Cinema
 
-Trabalho 1 (Aquisição de Dados) da disciplina Ciência de Dados— UFAM/IComp.
+Trabalho 1 (Aquisição de Dados) da disciplina Ciência de Dados - UFAM/IComp.
 
 ## Sobre o projeto
 
@@ -50,7 +50,7 @@ licenças, `robots.txt`) estão em [`dataset_card.md`](./dataset_card.md).
 1. Abra `notebook_aquisicao.ipynb` no Google Colab.
 2. Execute todas as células em sequência (Ambiente de execução → Executar tudo).
 3. Quando solicitado, informe:
-   - a chave da Google Books API (opcional — funciona sem, com limite de requisições menor);
+   - a chave da Google Books API (opcional. funciona sem, com limite de requisições menor);
    - o token de leitura (v4, Bearer) da TMDB API (obrigatório).
 4. A coleta completa das três fontes leva entre 25 e 40 minutos, dependendo da estabilidade das APIs.
 
