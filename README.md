@@ -13,9 +13,9 @@ inspira — e o que explica os casos em que isso não acontece?
 
 ## Integrantes
 
-- Manuela Figueira Batista
 - Anna Luisa Antony
 - Elaine de Castro Freire
+- Manuela Figueira Batista
 - Raissa Clara Brasil
 
 ## Estrutura do repositório
