@@ -1,6 +1,6 @@
 # Livros Adaptados para o Cinema
 
-Trabalho 1 (Aquisição de Dados) da disciplina Bancos de Dados I — UFAM/IComp.
+Trabalho 1 (Aquisição de Dados) da disciplina Ciência de Dados— UFAM/IComp.
 
 ## Sobre o projeto
 
