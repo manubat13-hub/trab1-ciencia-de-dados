@@ -2,7 +2,7 @@
 
 ## A.1 Identificação
 
-**Nome da base:** Livros Adaptados para o Cinema
+**Nome da base:** Da Página à Tela - Livros Adaptados para o Cinema
 
 **Grupo / integrantes:**
 - Anna Luisa Antony
@@ -104,15 +104,20 @@ enriquecida pelas outras duas fontes. Duplicatas de chave (ex.: reedições do m
 | `media_votos` | numérica contínua | Nota média do filme no TMDB | 0–10 |
 | `contagem_votos` | numérica discreta | Número de votos do filme no TMDB | contagem |
 | `tem_match_tmdb` | booleana | Se o título encontrou um filme correspondente na TMDB | - |
+| `sim_titulo_gb` | numérica contínua (derivada) | Similaridade textual entre título da Wikipédia e o retornado pelo Google Books | 0 a 1 |
+| `sim_titulo_tmdb` | numérica contínua (derivada) | Similaridade textual entre título da Wikipédia e o retornado pela TMDB | 0 a 1 |
+| `ano_coerente` | booleana (derivada) | Se o ano do filme é igual ou posterior ao ano do livro, sinalizando inversões suspeitas | - |
+| `match_confiavel` | booleana (derivada) | Sinaliza casamentos considerados confiáveis, combinando similaridade de título e coerência de ano | - |
 | `anos_ate_adaptacao` | numérica discreta (derivada) | Anos entre publicação do livro e lançamento do filme | anos |
-| `retorno_financeiro` | numérica contínua (derivada) | (receita − orçamento) / orçamento | proporção |
+| `retorno_financeiro` | numérica contínua (derivada) | (receita menos orçamento) dividido por orçamento | proporção |
 
 ---
 
 ## A.4 Volume e granularidade
 
-**Número de linhas / colunas:** 424 linhas (livros da categoria da Wikipédia) × 26 colunas na base
-integrada.
+**Número de linhas / colunas:** 424 linhas (livros da categoria da Wikipédia) × 30 colunas na base
+integrada. Nenhuma linha foi perdida na deduplicação de chave (424 brutas -> 424 após dedup, nas três
+fontes).
 
 **O que representa uma linha:** um livro pertencente à categoria "Livros adaptados para o cinema" da
 Wikipédia em português, enriquecido com dados do livro (Google Books) e do filme correspondente (TMDB)
@@ -131,10 +136,29 @@ definido: cobre obras de diferentes décadas, idiomas e nacionalidades.
 obra).
 
 **Lacunas conhecidas:**
+- Taxa de match com a TMDB: 85,8% (364 de 424 títulos). Taxa de cobertura de avaliação no Google
+  Books: apenas 19,6% (83 de 424), o que limita bastante análises futuras que dependam de
+  `nota_media`.
+- O `merge` por título sozinho não garante que o livro e o filme casados sejam de fato a mesma obra
+  (risco de homônimos). Para tratar isso, foram criadas colunas de similaridade textual (`sim_titulo_gb`,
+  `sim_titulo_tmdb`) e de coerência temporal (`ano_coerente`), combinadas na flag `match_confiavel`.
+  Ao aplicar esse critério, 189 das 424 linhas apresentaram `anos_ate_adaptacao` fora de uma faixa
+  plausível (filme antes do livro, ou intervalo maior que 120 anos), e apenas 21 dessas 189 foram
+  consideradas `match_confiavel = True`. As linhas suspeitas não foram removidas, apenas sinalizadas,
+  para preservar o volume da base; análises futuras devem filtrar por `match_confiavel` quando a
+  precisão do casamento for crítica.
+- Uma causa identificada para parte dessas incoerências é que a Google Books API tende a retornar,
+  como primeiro resultado, a edição mais popular ou mais recente do livro (reedições, traduções),
+  não necessariamente a primeira edição publicada. Isso distorce `ano_publicacao_livro` para cima em
+  parte das linhas e, por consequência, distorce `anos_ate_adaptacao`, que depende desse campo. Esse
+  comportamento da API não foi contornado nesta fase (exigiria reprocessar a lista completa de
+  candidatos já salva em `dados_brutos/google_books_json/`, escolhendo a edição de menor
+  `publishedDate` em vez do primeiro resultado), ficando registrado como melhoria possível para as
+  fases futuras do projeto.
+- 9 linhas apresentaram duração de filme (`duracao_min`) fora da faixa plausível (1 a 600 minutos),
+  também não removidas, apenas não corrigidas.
 - Nem todo livro tem correspondência na TMDB (sinalizado por `tem_match_tmdb = False`) - títulos muito
   antigos/obscuros ou com nome muito divergente entre fontes podem não ser encontrados.
-- Nem todo livro tem avaliação suficiente no Google Books (sinalizado por
-  `tem_avaliacoes_google_books = False`).
 - `orcamento`/`receita` iguais a 0 na TMDB foram tratados como "não informado" (NaN), pois a ausência
   desse dado é comum e não significa valor real igual a zero.
 
