@@ -2,7 +2,7 @@
 
 ## A.1 Identificação
 
-**Nome da base:** Da Página à Tela - Livros Adaptados para o Cinema
+**Nome da base:** Livros Adaptados para o Cinema
 
 **Grupo / integrantes:**
 - Anna Luisa Antony
