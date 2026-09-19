@@ -2,7 +2,7 @@
 
 ## A.1 Identificação
 
-**Nome da base:**  Livros Adaptados para o Cinema
+**Nome da base:** Livros e suas Adaptações para o Cinema
 
 **Grupo / integrantes:**
 - Anna Luisa Antony Afonso
@@ -12,192 +12,191 @@
 
 **Tema e pergunta motivadora:**
 
-Uma base que cruza livros e suas adaptações cinematográficas, combinando avaliações de leitores
-(Google Books API) com dados de recepção, produção e desempenho comercial dos filmes correspondentes
-(Wikipédia, via scraping, + TMDB API).
+Uma base que cruza obras literárias com suas adaptações cinematográficas, combinando a avaliação dos
+leitores sobre o livro (Google Books API) com os dados de produção, recepção e desempenho comercial
+do filme correspondente (TMDB API), a partir de pares livro→filme extraídos da Wikipédia (scraping).
 
 *Pergunta motivadora:* O sucesso de um livro entre os leitores se traduz em sucesso do filme que ele
 inspira - e o que explica os casos em que isso não acontece?
 
 Desdobramentos que a base permite investigar:
-- Livros com mais avaliações (`n_avaliacoes`) geram filmes com maior bilheteria ou popularidade?
-- A nota média do livro (`nota_media`) tem relação com o desempenho comercial/crítico do filme
-  (`media_votos`, `receita`)?
-- Certos gêneros literários convertem melhor sua base de leitores em público de cinema do que outros?
-- Existem "ondas" de adaptações - décadas em que certos gêneros ou autores foram mais explorados pelo
-  cinema?
+- Livros com mais avaliações (`n_avaliacoes_livro`) geram filmes com maior bilheteria (`receita`) ou
+  popularidade (`popularidade`)?
+- A nota do livro (`nota_media_livro`) tem relação com a nota do filme (`media_votos_filme`)?
+- Certos gêneros (`generos_filme`) convertem melhor sua base de leitores em público de cinema?
 
-**Data da coleta:** 11 de setembro de 2026
+
+**Data da coleta final:** 18 de setembro de 2026
 
 ---
 
 ## A.2 Fontes e proveniência
 
-**Fonte 1 - nome e URL:** Wikipédia (Pt) - Categoria: Livros adaptados para o cinema
-`https://pt.wikipedia.org/wiki/Categoria:Livros_adaptados_para_o_cinema`
+**Fonte 1 - nome e URL:** Wikipédia (En) - listas de obras de ficção adaptadas para o cinema
+`https://en.wikipedia.org/wiki/List_of_fiction_works_made_into_feature_films`
+(sub-listas alfabéticas: 0–9/A–C, D–J, K–R, S–Z)
 
-**Fonte 1 - método:** Web scraping (requests + BeautifulSoup), com paginação automática seguindo o
-link "página seguinte" da categoria. Extraído: título da obra (`titulo_wikipedia_sujo`) e URL do
-artigo (`url_artigo`). `robots.txt` verificado e permite o acesso (`can_fetch` = True). Pausa de 2s
-entre requisições de página.
+**Fonte 1 - método:** Web scraping das tabelas com `requests` + `pandas.read_html`. Cada linha das
+tabelas traz, já pareados por editores da Wikipédia, o livro (`Título (ano), Autor`) e o filme
+(`Título do filme (ano)`); esses campos foram separados por expressão regular. O HTML bruto de cada
+página foi salvo. `robots.txt` verificado programaticamente (função `raspar`, `can_fetch = True`) antes
+da coleta. Pausa de 2s entre requisições.
 
-**Fonte 1 - licença/termos:** conteúdo textual da Wikipédia sob CC BY-SA 4.0, que permite uso e
-redistribuição (inclusive acadêmica) mediante atribuição. Extraímos apenas dados factuais (títulos e
-links), preservando a atribuição na coluna `url_artigo`.
+**Fonte 1 - licença/termos:** conteúdo da Wikipédia sob CC BY-SA 4.0, que permite uso e redistribuição
+(inclusive acadêmica) mediante atribuição. Extraímos apenas dados factuais das listas (títulos, anos,
+autores), não o texto dos artigos. Atribuição preservada na coluna `url_fonte`.
 
 **Fonte 2 - nome e URL:** Google Books API
 `https://www.googleapis.com/books/v1/volumes`
 
-**Fonte 2 - método:** API REST, uma requisição por título (`q=intitle:{titulo}`), reaproveitando os
-424 títulos extraídos da Wikipédia. Resposta JSON bruta salva por título. Retry automático em caso de
-erro 429 (cota excedida). Pausa de 2s entre requisições. Dos volumes retornados, manteve-se o primeiro
-resultado.
+**Fonte 2 - método:** API REST, uma requisição por livro único (`q=intitle:{título} inauthor:{autor}`,
+`langRestrict=en`), reaproveitando título e autor extraídos da Wikipédia. Buscar por título + autor
+reduz muito o risco de casar com outro livro. Extraídos nota média, nº de avaliações, categorias,
+idioma e editora. JSON bruto salvo por consulta. Retry automático em 429/503. Pausa de 2s.
 
 **Fonte 2 - licença/termos:** uso regido pelos Termos de Serviço das APIs do Google; permitido para
-fins acadêmicos e de pesquisa, vedada a redistribuição dos dados brutos como produto concorrente.
+fins acadêmicos, vedada a redistribuição dos dados brutos como produto concorrente.
 
 **Fonte 3 - nome e URL:** TMDB (The Movie Database) API
-`https://api.themoviedb.org/3/search/movie` e `https://api.themoviedb.org/3/movie/{id}`
+`https://api.themoviedb.org/3/search/movie`, `/movie/{id}` e `/movie/{id}/keywords`
 
-**Fonte 3 - método:** API REST autenticada (Bearer token v4), duas chamadas por título - busca
-(`/search/movie`) seguida de detalhes (`/movie/{id}`) do primeiro candidato retornado pela busca.
-Pausa de 2s entre requisições.
+**Fonte 3 - método:** API REST autenticada (Bearer token v4). Para cada par: busca do filme por
+**título + ano** (`primary_release_year`) com fallback sem ano quando necessário; detalhes do filme
+(orçamento, receita, duração, gêneros, votos); e keywords, usadas para confirmar a adaptação via
+`based on novel or book` (keyword 818). JSON bruto salvo por chamada. Retry em 429 e erros de conexão.
+Pausa de 2s.
 
-**Fonte 3 - licença/termos:** TMDB exige atribuição ("This product uses the TMDB API but is not
-endorsed or certified by TMDB") e proíbe uso que viole seus Termos de Serviço (ex.: revenda dos dados
-brutos como produto concorrente). Uso acadêmico é permitido.
+**Fonte 3 - licença/termos:** a TMDB exige a atribuição *"This product uses the TMDB API but is not
+endorsed or certified by TMDB"* e proíbe uso que viole seus Termos de Serviço. Uso acadêmico permitido.
 
-**Chave de integração:** `chave_titulo` - título normalizado (minúsculas, sem acentos, sem pontuação,
-sem espaços duplicados), derivado de `titulo_wikipedia` e aplicado às três fontes. O join é feito com
-`how="left"` a partir da Wikipédia (que funciona como "esqueleto" da base - todo livro da categoria),
-enriquecida pelas outras duas fontes. Duplicatas de chave (ex.: reedições do mesmo livro) são reduzidas
-à primeira ocorrência. A confiabilidade de cada casamento é avaliada pelas colunas `sim_titulo_gb`,
-`sim_titulo_tmdb`, `ano_coerente` e consolidada em `match_confiavel` (ver A.5).
+**Chave de integração:** a Wikipédia é o esqueleto (um par livro→filme por linha). Há **duas chaves**,
+porque as fontes descrevem coisas diferentes:
+- **Wikipédia × Google Books:** casadas pelo **livro** - `chave_livro` = título do livro + autor,
+  normalizados (minúsculas, sem acentos, sem pontuação, espaços colapsados). O casamento tolera
+  divergências de grafia via essa normalização.
+- **Wikipédia × TMDB:** casadas pelo **filme**, por **posição** (índice) - o `df_tmdb` foi construído
+  linha a linha a partir do esqueleto, então a linha *i* de um corresponde à linha *i* do outro,
+  casamento exato e sem risco de erro textual.
+
+O tratamento de divergências de casamento está descrito em A.5.
 
 ---
 
 ## A.3 Dicionário de variáveis
 
+*(Também exportado em `dados_tratados/dicionario_variaveis.csv`.)*
+
 | Variável | Tipo | Descrição | Unidade |
 |---|---|---|---|
-| `chave_titulo` | texto | Chave normalizada de integração entre as três fontes | - |
-| `titulo_wikipedia` | texto | Título do livro, conforme Wikipédia | - |
-| `url_artigo` | texto | URL do artigo da Wikipédia sobre a obra | - |
-| `titulo_google_books` | texto | Título do livro conforme Google Books | - |
-| `autor` | texto | Autor(es) do livro | - |
-| `ano_publicacao_livro` | numérica discreta | Ano de publicação da edição retornada pelo Google Books | ano |
-| `nota_media` | numérica contínua | Nota média do livro no Google Books | 0–5 |
-| `n_avaliacoes` | numérica discreta | Número de avaliações do livro no Google Books | contagem |
-| `categorias` | categórica | Categoria/gênero do livro | - |
-| `idioma` | categórica | Idioma da edição do livro | código ISO |
-| `editora` | categórica | Editora do livro | - |
-| `tem_avaliacoes_google_books` | booleana | Se o livro tem nota registrada no Google Books | - |
-| `titulo_tmdb` | texto | Título do filme conforme TMDB | - |
-| `data_lancamento` | data/hora | Data de lançamento do filme | AAAA-MM-DD |
-| `ano_lancamento_filme` | numérica discreta | Ano de lançamento do filme | ano |
-| `idioma_original` | categórica | Idioma original do filme | código ISO |
-| `generos` | categórica | Gênero(s) do filme | - |
-| `duracao_min` | numérica contínua | Duração do filme (0 tratado como não informado → NaN) | minutos |
-| `orcamento` | numérica contínua | Orçamento de produção do filme (0 → NaN) | USD |
-| `receita` | numérica contínua | Receita de bilheteria do filme (0 → NaN) | USD |
-| `popularidade` | numérica contínua | Índice de popularidade/engajamento na TMDB | índice TMDB |
-| `media_votos` | numérica contínua | Nota média do filme no TMDB | 0–10 |
-| `contagem_votos` | numérica discreta | Número de votos do filme no TMDB | contagem |
-| `tem_match_tmdb` | booleana | Se o título encontrou um filme correspondente na TMDB | - |
-| `sim_titulo_gb` | numérica contínua (derivada) | Similaridade textual entre título da Wikipédia e o retornado pelo Google Books | 0 a 100 |
-| `sim_titulo_tmdb` | numérica contínua (derivada) | Similaridade textual entre título da Wikipédia e o retornado pela TMDB | 0 a 100 |
-| `ano_coerente` | booleana (derivada) | Se o livro foi publicado até 3 anos após o filme, sinalizando inversões suspeitas | - |
-| `match_confiavel` | booleana (derivada) | Casamento considerado confiável: match na TMDB + similaridade de título ≥ 60 + ano coerente | - |
-| `retorno_financeiro` | numérica contínua (derivada) | (receita menos orçamento) dividido por orçamento, quando orçamento > 0 | proporção |
+| `titulo_livro` | texto | Título do livro (Wikipédia, limpo) | - |
+| `autor` | categórica | Autor(es) do livro (Wikipédia) | - |
+| `ano_publicacao_livro` | numérica discreta | Ano da 1ª edição do livro (Wikipédia) | ano |
+| `titulo_filme` | texto | Título do filme (Wikipédia, limpo) | - |
+| `ano_lancamento_filme` | numérica discreta | Ano de lançamento do filme (TMDB) | ano |
+| `eh_serie` | booleana | Se a obra é uma série/coletânea agrupada na fonte | - |
+| `url_fonte` | texto | URL da lista da Wikipédia (atribuição) | - |
+| `nota_media_livro` | numérica contínua | Nota média do livro (Google Books) | 0–5 |
+| `n_avaliacoes_livro` | numérica discreta | Nº de avaliações do livro (Google Books) | contagem |
+| `categorias_livro` | categórica | Categorias do livro (Google Books) | - |
+| `editora` | categórica | Editora do livro (Google Books) | - |
+| `idioma_livro` | categórica | Idioma da edição do livro (Google Books) | ISO |
+| `tem_avaliacoes_livro` | booleana | Se o livro tem avaliação no Google Books | - |
+| `tmdb_id` | numérica discreta | Identificador do filme na TMDB | - |
+| `data_lancamento_filme` | data/hora | Data de lançamento do filme (TMDB) | data |
+| `idioma_filme` | categórica | Idioma original do filme (TMDB) | ISO |
+| `generos_filme` | categórica | Gêneros do filme (TMDB) | - |
+| `duracao_min` | numérica contínua | Duração do filme (0 → NaN) | minutos |
+| `orcamento` | numérica contínua | Orçamento do filme (0 → NaN) | USD nominal |
+| `receita` | numérica contínua | Receita/bilheteria do filme (0 → NaN) | USD nominal |
+| `popularidade` | numérica contínua | Índice de popularidade (TMDB) | score TMDB |
+| `media_votos_filme` | numérica contínua | Nota média do filme (TMDB) | 0–10 |
+| `contagem_votos_filme` | numérica discreta | Nº de votos do filme (TMDB) | contagem |
+| `tem_match_tmdb` | booleana | Se o filme foi encontrado (e validado) na TMDB | - |
+| `eh_adaptacao_livro` | booleana | Se a TMDB confirma o filme como adaptação de livro (keyword 818) | - |
+| `retorno_financeiro` | numérica contínua | (receita - orçamento) / orçamento, se orçamento válido | razão |
 
 ---
 
 ## A.4 Volume e granularidade
 
-**Número de linhas / colunas:** 424 linhas (livros da categoria da Wikipédia) × 29 colunas na base
-integrada. Nenhuma linha foi perdida na deduplicação de chave (424 brutas -> 424 após dedup, nas três
-fontes).
+**Número de linhas / colunas:** 911 linhas × 26 colunas (base tratada).
 
-**O que representa uma linha:** um livro pertencente à categoria "Livros adaptados para o cinema" da
-Wikipédia em português, enriquecido com dados do livro (Google Books) e do filme correspondente (TMDB)
-quando encontrados.
+**O que representa uma linha:** um par **livro → filme** - uma obra literária e uma adaptação
+cinematográfica específica dela. Como um mesmo livro pode ter várias adaptações (ex.: Pinóquio), um
+livro pode aparecer em mais de uma linha, cada uma com um filme distinto. A unidade de observação é,
+portanto, o *par*, não o livro nem o filme isoladamente.
 
-**Cobertura:** todas as obras listadas na categoria da Wikipédia no momento da coleta - não é uma
-amostra aleatória, é a totalidade da categoria (um "censo" da categoria). Sem recorte temporal
-definido: cobre obras de diferentes décadas, idiomas e nacionalidades.
+**Cobertura:** pares extraídos das listas de ficção adaptada da Wikipédia em inglês, com **recorte
+temporal: filmes lançados a partir do ano 2000**. O scraping rendeu 3821 pares; o recorte para ≥2000
+(911 pares) foi aplicado por dois motivos: viabilizar a coleta via API em tempo reprodutível (enriquecer
+os 3821 exigiria ~15 mil chamadas) e porque filmes recentes têm cobertura muito melhor de dados na TMDB.
+A base representa, assim, **adaptações recentes**, não adaptações em geral.
 
 ---
 
 ## A.5 Limitações e decisões
 
-**Dados descartados:** duplicatas completas (linha idêntica em todas as colunas) e duplicatas de
-`chave_titulo` (mantida apenas a primeira ocorrência - trata reedições do mesmo livro como a mesma
-obra). Observação de transparência: nenhuma colisão de chave foi de fato encontrada; a unicidade da
-base decorre do desenho da coleta (uma linha por título da Wikipédia, reaproveitado nas duas APIs),
-não de uma etapa efetiva de deduplicação.
+**Dados descartados:**
+- **Recorte temporal:** dos 3821 pares raspados, mantivemos os 911 com filme lançado a partir de 2000.
+- **Duplicatas de livro no Google Books:** consultamos livros únicos (522) e removemos chave de livro
+  repetida antes do join. Na Wikipédia, livros repetidos (várias adaptações do mesmo livro) são
+  legítimos e mantidos.
+- 
+
+**Tratamento de divergências de casamento (eixo central de qualidade):**
+- **48 filmes recuperados:** a primeira busca na TMDB falhou em 64 filmes porque o título vinha com
+  trechos de tradução grudados (ex.: "White Fang (French: Croc-Blanc)"). Limpando o título e
+  reconsultando, 48 foram recuperados, elevando o match de 93,0% para 98,2%.
+- **16 matches invalidados:** a busca com fallback sem ano às vezes casou com uma adaptação **antiga**
+  do mesmo livro (ex.: "The Picture of Dorian Gray" de 1945 em vez da versão recente). Quando o ano do
+  filme na TMDB diverge em mais de 5 anos do indicado pela Wikipédia, tratamos como obra diferente e
+  **anulamos** os dados da TMDB dessas linhas. A taxa de match válido final é **96,5%**.
 
 **Lacunas conhecidas:**
-- Taxa de match com a TMDB: 85,8% (364 de 424 títulos). Cobertura de avaliação no Google
-  Books: apenas 20,0% (85 de 424), o que limita bastante análises futuras que dependam de
-  `nota_media`.
-- Confiabilidade do casamento (limitação central): embora 85,8% dos títulos tenham encontrado um
-  filme na TMDB, o `merge` por título sozinho não garante que o livro e o filme casados sejam de fato
-  a mesma obra (risco de homônimos e de edições/versões trocadas). Para tratar isso, foram criadas
-  colunas de similaridade textual (`sim_titulo_gb`, `sim_titulo_tmdb`, escala 0–100) e de coerência
-  temporal (`ano_coerente`), combinadas na flag `match_confiavel`. Apenas **22,2% das linhas (94 de
-  424)** passam nesse critério mais rigoroso. As linhas restantes não foram removidas, apenas
-  sinalizadas, para preservar o volume da base; análises futuras devem filtrar por
-  `match_confiavel == True` quando a precisão do casamento for crítica.
-- Múltiplos candidatos por consulta: 420 das 424 consultas ao Google Books (99%) retornaram mais de
-  uma edição (até 10 por título); na TMDB, 234 dos 364 títulos com filme (64%) retornaram mais de um
-  candidato (até 20). Em ambos os casos manteve-se o primeiro resultado, sem desempate por ano ou
-  autor. Esta é a principal origem dos casamentos não confiáveis.
-- Uma causa específica identificada é que a Google Books API tende a retornar, como primeiro
-  resultado, a edição mais popular ou mais recente do livro (reedições, traduções), não
-  necessariamente a primeira edição publicada. Isso distorce `ano_publicacao_livro` para cima em parte
-  das linhas. Esse comportamento da API não foi contornado nesta fase (exigiria reprocessar a lista
-  completa de candidatos já salva em `dados_brutos/google_books_json/`, escolhendo a edição de menor
-  `publishedDate` em vez do primeiro resultado), ficando registrado como melhoria possível para as
-  fases futuras do projeto.
-- Nem todo livro tem correspondência na TMDB (sinalizado por `tem_match_tmdb = False`) - títulos muito
-  antigos/obscuros ou com nome muito divergente entre fontes podem não ser encontrados.
-- `orcamento`/`receita`/`duracao_min` iguais a 0 na TMDB foram tratados como "não informado" (NaN),
-  pois a ausência desse dado é comum e não significa valor real igual a zero.
-- `retorno_financeiro` apresenta valores extremos (máximo da ordem de milhões), decorrentes de filmes
-  com orçamento reportado irrealisticamente baixo (poucos dólares) que passaram pelo filtro
-  `orcamento > 0`. Recomenda-se, na análise, descartar orçamentos implausíveis antes de calcular
-  médias de retorno.
+- **Cobertura de avaliação de livro baixa:** apenas **16,7%** das linhas (152 de 911) têm
+  `nota_media_livro`. É uma limitação estrutural do Google Books (mesmo buscando por título + autor,
+  a maioria dos livros não tem nota agregada), não do método. Análises que dependam da nota do livro
+  ficam restritas a esse subconjunto.
+- **Cobertura financeira parcial:** `orcamento` e `receita` ausentes em 45% dos filmes (0 na TMDB
+  tratado como "não divulgado" → NaN). `retorno_financeiro` calculável em 48% das linhas.
+- **Confirmação por keyword parcial:** apenas **46,2%** dos filmes têm a keyword 818 na TMDB. Como
+  ela é preenchida por voluntários, sua ausência não significa que o filme não seja adaptação; por
+  isso a keyword foi usada como **reforço positivo** de qualidade, não como filtro eliminatório.
+- **Obras em série agrupadas:** séries (Harry Potter, Twilight, Hunger Games, etc.) aparecem agrupadas em
+  uma entrada na Wikipédia; nessas linhas (sinalizadas por `eh_serie`), a nota do livro pode
+  representar a série ou o primeiro volume, não o volume exato de cada filme.
+- **~3,5% dos filmes sem match** na TMDB (sinalizados por `tem_match_tmdb = False`).
 
 **Decisões de limpeza relevantes:**
-- Chave de integração normalizada (minúsculas, sem acento/pontuação) para tolerar pequenas divergências
-  de grafia entre as fontes.
-- Anos extraídos de campos de data em formatos mistos (ex.: `"1999"`, `"1999-05-01"`) para permitir
-  comparações numéricas.
-- Outliers financeiros (bilheteria/orçamento) foram **detectados** pelo método IQR, mas **não
-  removidos/capados** - um blockbuster real é informação relevante para a pergunta motivadora, não um
-  erro de coleta.
-- Categóricas textuais ausentes preenchidas com o rótulo explícito "Não informado", em vez de
-  descartar a linha.
-- Valores financeiros em USD **nominais**, sem correção por inflação ou câmbio - comparações entre
-  décadas devem considerar essa limitação.
-
+- Chaves de integração normalizadas (minúsculas, sem acento/pontuação) e títulos limpos de trechos de
+  tradução (`(French: ...)`, `(German: ...)`).
+- `orcamento`/`receita`/`duracao_min` iguais a 0 na TMDB tratados como "não informado" (NaN).
+- **Outliers financeiros detectados (IQR) mas não capados:** um blockbuster real é dado relevante para
+  a pergunta motivadora. Os maiores retornos remanescentes são casos reais de filmes de baixo orçamento
+  com alta bilheteria (ex.: The Invisible Man, Winnie-the-Pooh: Blood and Honey).
+- **`retorno_financeiro` com piso de orçamento:** exigimos orçamento ≥ US$ 100 mil para calcular o
+  retorno, descartando orçamentos implausíveis (poucos milhares de dólares, prováveis erros de cadastro
+  na TMDB) que geravam retornos absurdos.
+- Categóricas textuais ausentes preenchidas com o rótulo "Não informado".
+- Valores financeiros em USD **nominais**, sem correção por inflação ou câmbio.
 
 ---
 
 ## A.6 Considerações éticas
 
 **Contém dados pessoais?** Não, no sentido da LGPD (Lei nº 13.709/2018). A base contém nomes de
-autores de livros, mas esses nomes referem-se a figuras públicas atuando em capacidade profissional
-(autoria de obra publicada), não a indivíduos identificados incidentalmente em contexto privado. Não
-há dados sensíveis, comportamentais ou de identificação de pessoas físicas privadas. Nenhuma técnica
-de anonimização foi necessária além do escopo natural do projeto (não foram coletados dados de
-usuários, avaliadores individuais ou compradores - apenas notas agregadas por obra).
+autores de livros, mas referem-se a figuras públicas em capacidade profissional (autoria de obra
+publicada), não a indivíduos identificados em contexto privado. Não há dados sensíveis, comportamentais
+ou de identificação de pessoas físicas privadas - apenas notas e contagens agregadas por obra. Nenhuma
+técnica de anonimização foi necessária.
 
-**Restrições de uso/redistribuição:** uso acadêmico permitido nas três fontes. Redistribuição da base
+**Restrições de uso/redistribuição:** uso acadêmico permitido nas três fontes. A redistribuição da base
 tratada deve manter a atribuição à Wikipédia (CC BY-SA 4.0) e à TMDB (atribuição obrigatória exigida
-pelos termos da API); não deve ser usada para criar um produto concorrente ao Google Books ou à TMDB.
+pelos termos da API), e não deve ser usada para criar um produto concorrente ao Google Books ou à TMDB.
 
-**`robots.txt` verificado?** Sim, para a Wikipédia (única fonte raspada via HTML) - `can_fetch`
-retornou `True` para a URL da categoria coletada. As APIs (Google Books e TMDB) não são cobertas por
-`robots.txt`, pois são interfaces de programação com termos de uso próprios, verificados separadamente
-acima.
+**`robots.txt` verificado?** Sim, para a Wikipédia (única fonte raspada via HTML) - a função `raspar`
+confirmou `can_fetch = True` para as URLs das listas antes da coleta, registrando o resultado na
+proveniência. As APIs (Google Books e TMDB) não são cobertas por `robots.txt`, sendo regidas por seus
+próprios Termos de Serviço, verificados acima. Boas práticas de coleta aplicadas: pausa de 2s entre
+requisições, User-Agent identificando o projeto, retry em erros de cota, e coleta apenas dos campos
+necessários.
